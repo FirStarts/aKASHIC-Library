@@ -348,14 +348,15 @@ const popups = [];
 map.on('load', () => {
   mapLoaded = true;
 
-  // 大気・空レイヤー（mercatorモードでは控えめに設定）
-  map.setFog({
-    color: 'rgb(186, 210, 235)',
-    'high-color': 'rgb(36, 92, 223)',
-    'horizon-blend': 0.04,
-    'space-color': 'rgb(5, 5, 25)',
-    'star-intensity': 0.0
-  });
+  // v3ではGlobeがデフォルトになるため明示的にmercatorを強制
+  map.setProjection('mercator');
+  curProjection = 'mercator';
+  document.getElementById('btnMap').classList.add('on');
+  document.getElementById('btnGlobe').classList.remove('on');
+
+  // 地図モード初期: fogなし（地球表面を隠さない）
+  map.setFog({});
+
 
   // Skyレイヤー（大気・太陽光）
   map.addLayer({
@@ -388,13 +389,17 @@ map.on('load', () => {
 map.on('style.load', () => {
   if (!mapLoaded) return;
 
-  map.setFog({
-    color: 'rgb(186, 210, 235)',
-    'high-color': 'rgb(36, 92, 223)',
-    'horizon-blend': 0.04,
-    'space-color': 'rgb(5, 5, 25)',
-    'star-intensity': curProjection === 'globe' ? 0.6 : 0.0
-  });
+  if (curProjection === 'globe') {
+    map.setFog({
+      color: 'rgb(186, 210, 235)',
+      'high-color': 'rgb(36, 92, 223)',
+      'horizon-blend': 0.04,
+      'space-color': 'rgb(5, 5, 25)',
+      'star-intensity': 0.6
+    });
+  } else {
+    map.setFog({});
+  }
 
   if (!map.getLayer('sky')) {
     map.addLayer({
@@ -472,7 +477,6 @@ function setProjection(proj) {
   document.getElementById('btnGlobe').classList.toggle('on', proj === 'globe');
 
   if (proj === 'globe') {
-    // 地球儀モード: 星空・宇宙空間を強調
     map.setFog({
       color: 'rgb(186, 210, 235)',
       'high-color': 'rgb(36, 92, 223)',
@@ -482,14 +486,8 @@ function setProjection(proj) {
     });
     map.easeTo({ pitch: 0, bearing: 0, zoom: 1.5, duration: 800 });
   } else {
-    // 地図モード: 星空を非表示
-    map.setFog({
-      color: 'rgb(186, 210, 235)',
-      'high-color': 'rgb(36, 92, 223)',
-      'horizon-blend': 0.04,
-      'space-color': 'rgb(5, 5, 25)',
-      'star-intensity': 0.0
-    });
+    // mercatorではfogを完全クリア（地球表面を隠さない）
+    map.setFog({});
     map.easeTo({ zoom: 2, duration: 600 });
   }
 }
