@@ -472,11 +472,11 @@ function setStyle(name) {
 
 function setProjection(proj) {
   curProjection = proj;
-  map.setProjection(proj);
   document.getElementById('btnMap').classList.toggle('on',   proj === 'mercator');
   document.getElementById('btnGlobe').classList.toggle('on', proj === 'globe');
 
   if (proj === 'globe') {
+    map.setProjection('globe');
     map.setFog({
       color: 'rgb(186, 210, 235)',
       'high-color': 'rgb(36, 92, 223)',
@@ -486,9 +486,14 @@ function setProjection(proj) {
     });
     map.easeTo({ pitch: 0, bearing: 0, zoom: 1.5, duration: 800 });
   } else {
-    // mercatorではfogを完全クリア（地球表面を隠さない）
+    // mercator: スタイルを再セットして確実に2D地図に戻す
     map.setFog({});
-    map.easeTo({ zoom: 2, duration: 600 });
+    map.setProjection('mercator');
+    // v3でGlobeが残る場合はスタイル再ロードで強制リセット
+    const currentStyle = STYLES[curStyle];
+    clearMarkers();
+    map.setStyle(currentStyle);
+    map.easeTo({ zoom: 2, pitch: 0, bearing: 0, duration: 600 });
   }
 }
 
@@ -521,6 +526,10 @@ function clearMarkers() {
 }
 
 function addMarker(n) {
+  // 緯度経度の異常値をスキップ
+  if (!n.lat || !n.lng || isNaN(n.lat) || isNaN(n.lng) ||
+      n.lat < -90 || n.lat > 90 || n.lng < -180 || n.lng > 180) return;
+
   const color = CAT_COLORS[n.category] || CAT_COLORS['その他'];
 
   const el = document.createElement('div');
@@ -728,11 +737,16 @@ async function loadNews(force = false) {
 
     // マーカー全体が見えるようカメラをフィット
     if (allNews.length) {
-      const lngs = allNews.map(n => n.lng), lats = allNews.map(n => n.lat);
-      map.fitBounds(
-        [[Math.min(...lngs) - 5, Math.min(...lats) - 5], [Math.max(...lngs) + 5, Math.max(...lats) + 5]],
-        { padding: 40, pitch: 20, duration: 1200 }
+      const valid = allNews.filter(n =>
+        n.lat >= -90 && n.lat <= 90 && n.lng >= -180 && n.lng <= 180
       );
+      if (valid.length) {
+        const lngs = valid.map(n => n.lng), lats = valid.map(n => n.lat);
+        map.fitBounds(
+          [[Math.min(...lngs) - 5, Math.min(...lats) - 5], [Math.max(...lngs) + 5, Math.max(...lats) + 5]],
+          { padding: 40, pitch: 20, duration: 1200 }
+        );
+      }
     }
     const note = source === 'cache' ? `（キャッシュ ${age_min}分前）` : '';
     setStatus('ok', `${allNews.length}件 ${note}`);
