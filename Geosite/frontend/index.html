@@ -325,11 +325,12 @@ const map = new mapboxgl.Map({
   container: 'map',
   style: STYLES.satellite,
   center: [10, 20],
-  zoom: 1.8,
+  zoom: 2,
   pitch: 0,
   bearing: 0,
   projection: 'mercator',
-  antialias: true
+  antialias: true,
+  fadeDuration: 0
 });
 
 map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-left');
@@ -347,13 +348,13 @@ const popups = [];
 map.on('load', () => {
   mapLoaded = true;
 
-  // 大気・空レイヤー
+  // 大気・空レイヤー（mercatorモードでは控えめに設定）
   map.setFog({
     color: 'rgb(186, 210, 235)',
     'high-color': 'rgb(36, 92, 223)',
-    'horizon-blend': 0.02,
+    'horizon-blend': 0.04,
     'space-color': 'rgb(5, 5, 25)',
-    'star-intensity': 0.6
+    'star-intensity': 0.0
   });
 
   // Skyレイヤー（大気・太陽光）
@@ -390,9 +391,9 @@ map.on('style.load', () => {
   map.setFog({
     color: 'rgb(186, 210, 235)',
     'high-color': 'rgb(36, 92, 223)',
-    'horizon-blend': 0.02,
+    'horizon-blend': 0.04,
     'space-color': 'rgb(5, 5, 25)',
-    'star-intensity': 0.6
+    'star-intensity': curProjection === 'globe' ? 0.6 : 0.0
   });
 
   if (!map.getLayer('sky')) {
@@ -469,8 +470,27 @@ function setProjection(proj) {
   map.setProjection(proj);
   document.getElementById('btnMap').classList.toggle('on',   proj === 'mercator');
   document.getElementById('btnGlobe').classList.toggle('on', proj === 'globe');
+
   if (proj === 'globe') {
+    // 地球儀モード: 星空・宇宙空間を強調
+    map.setFog({
+      color: 'rgb(186, 210, 235)',
+      'high-color': 'rgb(36, 92, 223)',
+      'horizon-blend': 0.04,
+      'space-color': 'rgb(5, 5, 25)',
+      'star-intensity': 0.6
+    });
     map.easeTo({ pitch: 0, bearing: 0, zoom: 1.5, duration: 800 });
+  } else {
+    // 地図モード: 星空を非表示
+    map.setFog({
+      color: 'rgb(186, 210, 235)',
+      'high-color': 'rgb(36, 92, 223)',
+      'horizon-blend': 0.04,
+      'space-color': 'rgb(5, 5, 25)',
+      'star-intensity': 0.0
+    });
+    map.easeTo({ zoom: 2, duration: 600 });
   }
 }
 
